@@ -1,0 +1,27 @@
+{
+  "name": "homebridge-augustlock2",
+  "version": "0.2.0",
+  "description": "August Lock V 2 plugin for HomeBridge (API 2.0): https://github.com/nfarina/homebridge",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/julianfez/homebridge-augustlock2.git"
+  },
+  "keywords": [
+    "homebridge-plugin"
+  ],
+  "author": "Julian Clarke",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/julianfez/homebridge-augustlock2/issues"
+  },
+  "homepage": "https://github.com/luisiam/homebridge-augustlock2#readme",
+  "engines": {
+    "node": ">=0.12.0",
+    "homebridge": ">=0.3.0"
+  },
+  "dependencies": {
+    "chalk": "^1.1.3",
+    "request": "^2.49.0",
+    "tough-cookie": "^2.3.1"
+  }
+}
