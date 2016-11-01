@@ -148,6 +148,16 @@ AugustPlatform.prototype.setService = function(accessory) {
     .on('get', this.getState.bind(this, accessory))
     .on('set', this.setState.bind(this, accessory));
 
+
+    accessory
+    .getService(Service.BatteryService)
+    .getCharacteristic(Characteristic.BatteryLevel);
+        
+    accessory
+    .getService(Service.BatteryService)
+    .getCharacteristic(Characteristic.StatusLowBattery);
+
+
   
 
   accessory.on('identify', this.identify.bind(this, accessory));
@@ -172,10 +182,10 @@ AugustPlatform.prototype.setAccessoryInfo = function(accessory) {
       .getService(Service.AccessoryInformation)
       .setCharacteristic(Characteristic.Model, accessory.context.model);
   }
-
-
+  
 
 }
+
 
 // Method to set target lock state
 AugustPlatform.prototype.setState = function(accessory, state, callback) {
@@ -262,7 +272,19 @@ AugustPlatform.prototype.updatelockStates = function(accessory) {
     .getCharacteristic(Characteristic.LockTargetState)
     .getValue();
 
+
+     accessory
+    .getService(Service.BatteryService)
+    .setCharacteristic(Characteristic.BatteryLevel, accessory.context.batt);
+
+     accessory
+    .getService(Service.BatteryService)
+    .setCharacteristic(Characteristic.StatusLowBattery, accessory.context.low);
+
+
 }
+
+
 
 
 
@@ -400,7 +422,8 @@ AugustPlatform.prototype.getlocks = function(callback) {
           callback(error, null);
     });
  }
-          
+
+ 
 
 AugustPlatform.prototype.getDevice = function(callback, state) {
   var self = this;
@@ -426,6 +449,9 @@ AugustPlatform.prototype.getDevice = function(callback, state) {
             var nameFound = true;
             var stateFound = true;
             var thishome = locks.HouseName;
+            self.batt = locks.battery * 100;
+            
+   
             
             var locked = state == "locked";
             var unlocked = state == "unlocked";
@@ -450,16 +476,25 @@ AugustPlatform.prototype.getDevice = function(callback, state) {
               newAccessory.context.serialNumber = thisSerialNumber;
               newAccessory.context.home = thishome;
               newAccessory.context.model = thisModel;
+              newAccessory.context.batt = self.batt;
+              newAccessory.context.low = self.low;
+
               newAccessory.context.log = function(msg) {self.log(chalk.cyan("[" + newAccessory.displayName + "]"), msg);};
 
               // Setup HomeKit security systemLoc service
-              newAccessory.addService(Service.LockMechanism, thislockName);
+              newAccessory.addService(Service.LockMechanism, thislockName + " Test");
+              newAccessory.addService(Service.BatteryService);
+             
              
               // Setup HomeKit accessory information
               self.setAccessoryInfo(newAccessory);
 
+              
+
               // Setup listeners for different security system events
               self.setService(newAccessory);
+
+
               
 
               // Register accessory in HomeKit
@@ -479,7 +514,11 @@ AugustPlatform.prototype.getDevice = function(callback, state) {
               newAccessory.updateReachability(true);
             }
 
-            // Determine the current lock state
+            if (self.batt) {
+            newAccessory.context.low = (self.batt > 20) ? Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL : Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW;
+
+            }
+
 
 
             if (state === "locked" ) {
@@ -488,7 +527,10 @@ AugustPlatform.prototype.getDevice = function(callback, state) {
             } else if (thislockState === "unlocked" ) {
               newAccessory.context.initialState = Characteristic.LockCurrentState.UNSECURED;
               var newState = Characteristic.LockCurrentState.UNSECURED;
+
             }
+
+
 
             // Detect for state changes
             if (newState !== newAccessory.context.currentState) {
@@ -599,7 +641,7 @@ AugustPlatform.prototype.configurationRequestHandler = function(context, request
     callback(instructionResp);
   } else {
     switch (context.step) {
-      // Operation choices
+    
       case 1:
         var respDict = {
           "type": "Interface",
