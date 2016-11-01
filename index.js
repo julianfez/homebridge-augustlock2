@@ -279,7 +279,7 @@ AugustPlatform.prototype.updatelockStates = function(accessory) {
 
      accessory
     .getService(Service.BatteryService)
-    .setCharacteristic(Characteristic.StatusLowBattery, accessory.context.low);
+    .getCharacteristic(Characteristic.StatusLowBattery, accessory.context.low);
 
 
 }
