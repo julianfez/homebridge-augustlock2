@@ -482,7 +482,7 @@ AugustPlatform.prototype.getDevice = function(callback, state) {
               newAccessory.context.log = function(msg) {self.log(chalk.cyan("[" + newAccessory.displayName + "]"), msg);};
 
               // Setup HomeKit security systemLoc service
-              newAccessory.addService(Service.LockMechanism, thislockName + " Test");
+              newAccessory.addService(Service.LockMechanism, thislockName);
               newAccessory.addService(Service.BatteryService);
              
              
