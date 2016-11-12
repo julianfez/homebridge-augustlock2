@@ -1,23 +1,23 @@
-var request = require("request");
-var chalk = require("chalk");
-var jar = request.jar();
-var Accessory, Service, Characteristic, UUIDGen;
+  var request = require("request");
+  var chalk = require("chalk");
+  var jar = request.jar();
+  var Accessory, Service, Characteristic, UUIDGen;
 
-module.exports = function(homebridge) {
+  module.exports = function(homebridge) {
   Accessory = homebridge.platformAccessory;
   Service = homebridge.hap.Service;
   Characteristic = homebridge.hap.Characteristic;
   UUIDGen = homebridge.hap.uuid;
 
   homebridge.registerPlatform("homebridge-AugustLock2", "AugustLock2", AugustPlatform, true);
-}
+  }
 
-var APP_ID = "0";
+  var APP_ID = "0";
 
-var CODE = undefined;
+  var CODE = undefined;
 
 
-function AugustPlatform(log, config, api) {
+  function AugustPlatform(log, config, api) {
   this.log = log;
   this.platformLog = function(msg) {log(chalk.cyan("[August]"), msg);};
   this.config = config || {"platform": "AugustLock2"};
@@ -34,8 +34,8 @@ function AugustPlatform(log, config, api) {
   this.ContentType = "application/json";
   this.xkeaseapikey = "14445b6a2dba";
   this.manufacturer = "AUGUST";
-  
-  
+
+
 
 
 
@@ -49,11 +49,11 @@ function AugustPlatform(log, config, api) {
 
   // Definition Mapping
 
-      this.lockState = ["unlock", "lock"];
-}
+      this.lockState = ["unlocked", "locked"];
+  }
 
-// Method to restore accessories from cache
-AugustPlatform.prototype.configureAccessory = function(accessory) {
+  // Method to restore accessories from cache
+  AugustPlatform.prototype.configureAccessory = function(accessory) {
   var self = this;
   var accessoryID = accessory.context.deviceID;
 
@@ -61,83 +61,87 @@ AugustPlatform.prototype.configureAccessory = function(accessory) {
   this.setService(accessory);
   this.accessories[accessoryID] = accessory;
 
-}
+  }
 
-// Method to setup accesories from config.json
-AugustPlatform.prototype.didFinishLaunching = function() {
-  
+  // Method to setup accesories from config.json
+  AugustPlatform.prototype.didFinishLaunching = function() {
+
   if (this.phone && this.password) {
 
-    
     // Add or update accessory in HomeKit
     this.addAccessory();
 
     
     this.periodicUpdate();
-  
-  
+
        
   } else {
     this.platformLog("Please setup August login information!")
   }
-  
-}
 
-// Method to add or update HomeKit accessories
-AugustPlatform.prototype.addAccessory = function() {
-  var self = this;
-  
-  if (!this.securityToken) {
-
-  this.login(function(error){
-    if (!error) {
-      for (var deviceID in self.accessories) {
-        var accessory = self.accessories[deviceID];
-        if (!accessory.reachable) {
-          // Remove extra accessories in cache
-          self.removeAccessory(accessory);
-        } else {
-          // Update inital state
-          self.updatelockStates(accessory);
-        }
-      }
-    } else {
-      self.platformLog(error);
-    }
-  });
-  } else {
-    this.getlocks(function(error){
-      if (!error) {
-        for (var deviceID in self.accessories) {
-          var accessory = self.accessories[deviceID];
-          if (!accessory.reachable) {
-            // Remove extra accessories in cache
-            self.removeAccessory(accessory);
-          } else {
-            // Update inital state
-            self.updatelockStates(accessory);
-          }
-        }
-      } else {
-        self.platformLog(error);
-      }
-    });
   }
-}
 
-// Method to remove accessories from HomeKit
-AugustPlatform.prototype.removeAccessory = function(accessory) {
+  // Method to add or update HomeKit accessories
+  AugustPlatform.prototype.addAccessory = function() {
+  var self = this;
+
+  if (!this.thisDeviceID) {
+    
+    this.getlocks(function(error){
+          if (!error) {
+            self.platformLog(error);
+
+           for (var deviceID in self.accessories) {
+              var accessory = self.accessories[deviceID];
+              if (!accessory.reachable) {
+                // Remove extra accessories in cache
+                self.removeAccessory(accessory);
+              } 
+            }
+          } else {
+            self.platformLog(error);
+          }
+        });
+       } else {
+        
+        
+        this.login(function(error){
+          if (!error) {
+           
+            
+            for (var deviceID in self.accessories) {
+              var accessory = self.accessories[deviceID];
+              if (!accessory.reachable) {
+                // Remove extra accessories in cache
+                self.removeAccessory(accessory);
+              } else {
+                // Update inital state
+                self.updatelockStates(accessory);
+              }
+            }
+          } else {
+            self.platformLog(error);
+          }
+        });
+      }
+  }
+
+
+   
+    
+  // Method to remove accessories from HomeKit
+  AugustPlatform.prototype.removeAccessory = function(accessory) {
   if (accessory) {
     var deviceID = accessory.context.deviceID;
     accessory.context.log("Removed from HomeBridge.");
     this.api.unregisterPlatformAccessories("homebridge-AugustLock2", "AugustLock2", [accessory]);
     delete this.accessories[deviceID];
   }
-}
+  }
 
-// Method to setup listeners for different events
-AugustPlatform.prototype.setService = function(accessory) {
- accessory
+  // Method to setup listeners for different events
+  AugustPlatform.prototype.setService = function(accessory) {
+   accessory
     .getService(Service.LockMechanism)
     .getCharacteristic(Characteristic.LockCurrentState)
     .on('get', this.getState.bind(this, accessory));
@@ -149,22 +153,21 @@ AugustPlatform.prototype.setService = function(accessory) {
     .on('set', this.setState.bind(this, accessory));
 
 
-    accessory
+      accessory
     .getService(Service.BatteryService)
-    .getCharacteristic(Characteristic.BatteryLevel);
-        
-    accessory
+    .setCharacteristic(Characteristic.BatteryLevel);
+
+     accessory
     .getService(Service.BatteryService)
-    .getCharacteristic(Characteristic.StatusLowBattery);
+    .setCharacteristic(Characteristic.StatusLowBattery);
 
 
-  
 
   accessory.on('identify', this.identify.bind(this, accessory));
-}
+  }
 
-// Method to setup HomeKit accessory information
-AugustPlatform.prototype.setAccessoryInfo = function(accessory) {
+  // Method to setup HomeKit accessory information
+  AugustPlatform.prototype.setAccessoryInfo = function(accessory) {
   if (this.manufacturer) {
   accessory
     .getService(Service.AccessoryInformation)
@@ -181,14 +184,15 @@ AugustPlatform.prototype.setAccessoryInfo = function(accessory) {
     accessory
       .getService(Service.AccessoryInformation)
       .setCharacteristic(Characteristic.Model, accessory.context.model);
+
   }
-  
-
-}
 
 
-// Method to set target lock state
-AugustPlatform.prototype.setState = function(accessory, state, callback) {
+  }
+
+
+  // Method to set target lock state
+  AugustPlatform.prototype.setState = function(accessory, status, callback) {
   var self = this;
 
   // Always re-login for setting the state
@@ -201,16 +205,16 @@ AugustPlatform.prototype.setState = function(accessory, state, callback) {
       callback(getlocksError);
     }
   });
-}
+  }
 
-// Method to get target lock state
-AugustPlatform.prototype.getState = function(accessory, callback) {
+  // Method to get target lock state
+  AugustPlatform.prototype.getState = function(accessory, callback) {
   // Get target state directly from cache
-  callback(null, accessory.context.currentState);
-}
+  callback(null, accessory.context.currentState, accessory.context.low);
+  }
 
-// Method to get current lock state
-AugustPlatform.prototype.getCurrentState = function(accessory, callback) {
+  // Method to get current lock state
+  AugustPlatform.prototype.getCurrentState = function(accessory, callback) {
   var self = this;
   var thisOpener = accessory.context;
   var name = accessory.displayName;
@@ -224,12 +228,12 @@ AugustPlatform.prototype.getCurrentState = function(accessory, callback) {
       callback(error);
     }
   });
-}
+  }
 
 
 
-// Method for state periodic update
-AugustPlatform.prototype.periodicUpdate = function() {
+  // Method for state periodic update
+  AugustPlatform.prototype.periodicUpdate = function() {
   var self = this;
 
   // Determine polling interval
@@ -259,37 +263,42 @@ AugustPlatform.prototype.periodicUpdate = function() {
       self.periodicUpdate();
     });
   }, refresh * 1000);
-}
+  }
 
-// Method to update lock state in HomeKit
-AugustPlatform.prototype.updatelockStates = function(accessory) {
- accessory
+  AugustPlatform.prototype.updateState = function (callback) {
+  if (this.validData) {
+    // Refresh data directly from sever if current data is valid
+    this.getDevice(callback);
+  } else {
+    // Re-login if current data is not valid
+    this.login(callback);
+  }
+  }
+  // Method to update lock state in HomeKit
+  AugustPlatform.prototype.updatelockStates = function(accessory) {
+   accessory
     .getService(Service.LockMechanism)
     .setCharacteristic(Characteristic.LockCurrentState, accessory.context.currentState);
-  
+
   accessory
     .getService(Service.LockMechanism)
     .getCharacteristic(Characteristic.LockTargetState)
     .getValue();
 
+  accessory
+    .getService(Service.BatteryService)
+    .setCharacteristic(Characteristic.BatteryLevel, this.batt);
+
 
      accessory
     .getService(Service.BatteryService)
-    .setCharacteristic(Characteristic.BatteryLevel, accessory.context.batt);
-
-     accessory
-    .getService(Service.BatteryService)
-    .getCharacteristic(Characteristic.StatusLowBattery, accessory.context.low);
+    .setCharacteristic(Characteristic.StatusLowBattery, accessory.context.low);
 
 
-}
+  }
 
-
-
-
-
-// Method to retrieve lock state from the server
-AugustPlatform.prototype.updateState = function(callback) {
+  // Method to retrieve lock state from the server
+  AugustPlatform.prototype.updateState = function(callback) {
   if (this.validData) {
     // Refresh data directly from sever if current data is valid
     this.getDevice(function(error) {
@@ -301,30 +310,30 @@ AugustPlatform.prototype.updateState = function(callback) {
       callback(error);
     });
   }
-}
+  }
 
-// Method to handle identify request
-AugustPlatform.prototype.identify = function(accessory, paired, callback) {
+  // Method to handle identify request
+  AugustPlatform.prototype.identify = function(accessory, paired, callback) {
   accessory.context.log("Identify requested!");
   callback();
-}
+  }
 
-// loging auth and get token
-AugustPlatform.prototype.login = function(callback) {
+  // loging auth and get token
+  AugustPlatform.prototype.login = function(callback) {
   var self = this;
 
-  
+
 
 
   var body = {
   'identifier': 'phone:+' + this.phone,
   'installId': '0',
   'password': this.password
-};
-request.post({
+  };
+  request.post({
   url: "https://api-production.august.com/session",
   headers:{'content-type': 'application/json', 'x-kease-api-key': '14445b6a2dba', 'userAgent': 'August/4.4.42 (iPhone; iOS 9.0.2; Scale/2.00)', 'accept-version': '0.0.1', 'Proxy-Connection': 'keep-alive', 'accept-Language': 'en-US;q=1'},
- 
+   
   body: JSON.stringify(body)
 
   },function(error,request,body){
@@ -333,7 +342,7 @@ request.post({
 
       var json = JSON.parse(body);
       self.userId = json["userId"];
-  
+
       self.securityToken = request.headers['x-august-access-token'];
       self.platformLog("Logged in with ID" + self.userId);
       self.postLogin(callback);
@@ -342,12 +351,12 @@ request.post({
     self.platformLog(error);
     callback(error, null);
     });
-}
+  }
 
 
 
 
-AugustPlatform.prototype.postLogin = function(accessory, paired, callback) {
+  AugustPlatform.prototype.postLogin = function(accessory, paired, callback) {
     var self = this;
     
     var body = {
@@ -373,7 +382,7 @@ AugustPlatform.prototype.postLogin = function(accessory, paired, callback) {
              });
   }
              
-AugustPlatform.prototype.sendcode = function(callback) {
+  AugustPlatform.prototype.sendcode = function(callback) {
     var self = this;
     
     var body = {
@@ -387,7 +396,7 @@ AugustPlatform.prototype.sendcode = function(callback) {
        
         body: JSON.stringify(body)
         },function(error,request,body){
-  
+
           if (!error && request.statusCode == 200) {
             self.platformLog("send code " + self.code);
             self.getlocks(callback);
@@ -396,9 +405,9 @@ AugustPlatform.prototype.sendcode = function(callback) {
             self.platformLog(error);
             callback(error, null);
      });
-}
+  }
 
-AugustPlatform.prototype.getlocks = function(callback) {
+  AugustPlatform.prototype.getlocks = function(callback) {
   var self = this;
 
   require('request').get({
@@ -421,16 +430,16 @@ AugustPlatform.prototype.getlocks = function(callback) {
           self.platformLog(error);
           callback(error, null);
     });
- }
+   }
 
- 
+   
 
-AugustPlatform.prototype.getDevice = function(callback, state) {
+  AugustPlatform.prototype.getDevice = function(callback, status) {
   var self = this;
   this.validData = false;
 
   // Reset validData hint until we retrived data from the server
-  
+
 
   // Querystring params
   require('request').get({
@@ -445,19 +454,25 @@ AugustPlatform.prototype.getDevice = function(callback, state) {
             var thisSerialNumber = locks.SerialNumber.toString();
             var thisModel = locks.Bridge.deviceModel.toString();
             var thislockName = locks.LockName;
-            var state = locks.LockStatus.status;
+            var status = locks.LockStatus.status;
             var nameFound = true;
             var stateFound = true;
             var thishome = locks.HouseName;
-            self.batt = locks.battery * 100;
+            var batt = locks.battery;
+            self.batt = batt * 100;
             
-   
-            
-            var locked = state == "locked";
-            var unlocked = state == "unlocked";
 
-            var thislockState = (state == "locked" ) ? "1" : "0";
-        
+
+            if (self.batt < 20) {
+              lowbatt = Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW;
+              var newbatt = Characteristic.LockCurrentState.SECURED;
+            } else if (self.batt > 20) {
+              lowbatt = Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
+              var newbatt = Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
+
+            }
+
+            var thislockState = (status == "locked" ) ? "lock" : "unlock";
 
             // Initialization for opener
             if (!self.accessories[thisDeviceID]) {
@@ -476,8 +491,8 @@ AugustPlatform.prototype.getDevice = function(callback, state) {
               newAccessory.context.serialNumber = thisSerialNumber;
               newAccessory.context.home = thishome;
               newAccessory.context.model = thisModel;
-              newAccessory.context.batt = self.batt;
-              newAccessory.context.low = self.low;
+              newAccessory.context.low = newbatt;
+                                       
 
               newAccessory.context.log = function(msg) {self.log(chalk.cyan("[" + newAccessory.displayName + "]"), msg);};
 
@@ -508,34 +523,33 @@ AugustPlatform.prototype.getDevice = function(callback, state) {
               newAccessory.context.serialNumber = thisSerialNumber;
               newAccessory.context.model = thisModel;
               newAccessory.context.home = thishome;
-              
+             
 
               // Accessory is reachable after it's found in the server
               newAccessory.updateReachability(true);
             }
 
-            if (self.batt) {
-            newAccessory.context.low = (self.batt > 20) ? Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL : Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW;
-
-            }
 
 
-
-            if (state === "locked" ) {
-              newAccessory.context.initialState = Characteristic.LockCurrentState.UNSECURED;
+            if (status === "locked" ) {
+              newAccessory.context.initialState = Characteristic.LockCurrentState.SECURED;
               var newState = Characteristic.LockCurrentState.SECURED;
-            } else if (thislockState === "unlocked" ) {
+            } else if (status === "unlocked" ) {
               newAccessory.context.initialState = Characteristic.LockCurrentState.UNSECURED;
               var newState = Characteristic.LockCurrentState.UNSECURED;
 
             }
+            
 
 
 
             // Detect for state changes
-            if (newState !== newAccessory.context.currentState) {
+            if (status) {
+
               self.count = 0;
               newAccessory.context.currentState = newState;
+               newAccessory.context.low = newbatt;
+
             }
 
             // Store accessory in cache
@@ -563,41 +577,30 @@ AugustPlatform.prototype.getDevice = function(callback, state) {
     
   }).on('error', function(error) {
     self.platformLog("Error '" + error + "'" + "lock null");
-  
+
   });
 
-}
+  }
 
 
-// Send opener target state to the server
-AugustPlatform.prototype.setState = function(accessory, state, callback) {
- var self = this;
+  // Send opener target state to the server
+  AugustPlatform.prototype.setState = function(accessory, status, callback) {
+  var self = this;
   var thisOpener = accessory.context;
   var name = accessory.displayName;
-var augustState = state === "locked" ? "lock" : "unlock";
-
-var status = self.lockState[state];
-  request.put({
-        url: "https://api-production.august.com/remoteoperate/" + self.lockids + "/" + self.lockState[state],
-        "headers": {
-            "Content-Type": 'application/json',
-            'x-kease-api-key': '14445b6a2dba',
-            'x-august-access-token': this.securityToken,
-            'Proxy-Connection': 'keep-alive',
-            'userAgent': 'August/4.4.42 (iPhone; iOS 9.0.2; Scale/2.00)',
-            'accept-version': '0.0.1',
-            'accept-Language': 'en-US;q=1'
-        }
-
-  
+  var augustState = status === "locked" ? "lock" : "unlock";
+  var status = self.lockState[status];
+          require('request').put({
+          uri:"https://api-production.august.com/remoteoperate/" + self.lockids + "/" + augustState,
+          headers:{'content-type': 'application/json', 'x-kease-api-key': '14445b6a2dba', 'userAgent': 'August/4.4.42 (iPhone; iOS 9.0.2; Scale/2.00)', 'accept-version': '0.0.1', 'x-august-access-token': this.securityToken},
 
   // Send the state request to August
-  
+
   }, function(error, response, json) {
     if (!error && response.statusCode == 200) {
       
      
-      thisOpener.log("State was successfully set to " + status);
+      thisOpener.log("State was successfully set to  " + status+ augustState);
 
         // Set short polling interval
         self.count = 0;
@@ -606,24 +609,25 @@ var status = self.lockState[state];
           self.periodicUpdate();
         }
 
-        callback(error, state);
+        callback(error, status);
           } else {
       thisOpener.log("Error '"+error+"' setting lock state: " + json);
+      self.removeAccessory(accessory);
       callback(error);
     }
   }).on('error', function(error) {
     thisOpener.log(error);
     callback(error);
   });
-}
+  }
 
-// Method to handle plugin configuration in HomeKit app
-AugustPlatform.prototype.configurationRequestHandler = function(context, request, callback) {
+  // Method to handle plugin configuration in HomeKit app
+  AugustPlatform.prototype.configurationRequestHandler = function(context, request, callback) {
   var self = this;
-	
+  	
 
-  
- if (request && request.type === "Terminate") {
+
+   if (request && request.type === "Terminate") {
     return;
   }
 
@@ -658,11 +662,11 @@ AugustPlatform.prototype.configurationRequestHandler = function(context, request
             "secure": true
           }]
         }
-				
-				
-				
-				context.step = 2;
-				callback(respDict);
+  				
+  				
+  				
+  				context.step = 2;
+  				callback(respDict);
         break;
       case 2:
         var userInputs = request.response.inputs;
@@ -685,12 +689,12 @@ AugustPlatform.prototype.configurationRequestHandler = function(context, request
           if (this.tout) {
             clearTimeout(this.tout);
             this.periodicUpdate();
-						
+  						
           }
-				
+  				
 
 
-var respDict = {
+  var respDict = {
             "type": "Interface",
             "interface": "input",
             "title": "code",
@@ -698,13 +702,13 @@ var respDict = {
               "id": "code",
               "title": "August Verification Code",
               "placeholder": this.code ? "Text Phone Veryfication Code" : "code",
-							"showNextButton": true
+  							"showNextButton": true
               }]
             };
            context.step = 3;
           
- 				  } else {
-  
+   				  } else {
+
           // Error if required info is missing
           var respDict = {
             "type": "Interface",
@@ -716,26 +720,26 @@ var respDict = {
 
           context.step = 1;
         }
-				callback(respDict);			
+  				callback(respDict);			
         break;
       case 3:
       var userInputs = request.response.inputs;
 
       // Setup info for adding or updating accessory
       this.code = userInputs.code || this.code;
-			        
-				this.sendcode(callback);
-				
-				          var respDict = {
+  			        
+  				this.sendcode(callback);
+  				
+  				          var respDict = {
             "type": "Interface",
             "interface": "instruction",
             "title": "Success",
             "detail": "The configuration is now updated.",
             "showNextButton": true
           };
-				
-				context.step = 4;
- 
+  				
+  				context.step = 4;
+   
         	callback(respDict);
         break;
       case 4:
@@ -750,4 +754,4 @@ var respDict = {
         break;
     }
   }
-}
+  }
