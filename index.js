@@ -23,6 +23,7 @@
   this.config = config || {"platform": "AugustLock2"};
   this.phone = this.config.phone;
   this.password = this.config.password;
+  this.code = this.config.augcode;
   this.securityToken =  this.config.securityToken;
   this.longPoll = parseInt(this.config.longPoll, 10) || 300;
   this.shortPoll = parseInt(this.config.shortPoll, 10) || 5;
@@ -84,49 +85,23 @@
   // Method to add or update HomeKit accessories
   AugustPlatform.prototype.addAccessory = function() {
   var self = this;
-
-  if (!this.thisDeviceID) {
-    
-    this.getlocks(function(error){
-          if (!error) {
-            self.platformLog(error);
-
-           for (var deviceID in self.accessories) {
-              var accessory = self.accessories[deviceID];
-              if (!accessory.reachable) {
-                // Remove extra accessories in cache
-                self.removeAccessory(accessory);
-              } 
-            }
-          } else {
-            self.platformLog(error);
-          }
-        });
-       } else {
-        
-        
-        this.login(function(error){
-          if (!error) {
-           
+  this.login(function (error){
+      if (!error) {
+        for (var deviceID in self.accessories) {
+          var accessory = self.accessories[deviceID];
+          if (!accessory.reachable) {
+            // Remove extra accessories in cache
+            self.removeAccessory(accessory);
             
-            for (var deviceID in self.accessories) {
-              var accessory = self.accessories[deviceID];
-              if (!accessory.reachable) {
-                // Remove extra accessories in cache
-                self.removeAccessory(accessory);
-              } else {
-                // Update inital state
-                self.updatelockStates(accessory);
-              }
-            }
           } else {
-            self.platformLog(error);
+            // Update inital state
+            self.updateDoorStates(accessory);
+         
           }
-        });
+        }
       }
+    });
   }
-
-
    
     
   // Method to remove accessories from HomeKit
@@ -330,6 +305,9 @@
   'installId': '0',
   'password': this.password
   };
+  
+ 
+    
   request.post({
   url: "https://api-production.august.com/session",
   headers:{'content-type': 'application/json', 'x-kease-api-key': '14445b6a2dba', 'userAgent': 'August/4.4.42 (iPhone; iOS 9.0.2; Scale/2.00)', 'accept-version': '0.0.1', 'Proxy-Connection': 'keep-alive', 'accept-Language': 'en-US;q=1'},
@@ -346,11 +324,13 @@
       self.securityToken = request.headers['x-august-access-token'];
       self.platformLog("Logged in with ID" + self.userId);
       self.postLogin(callback);
+      
   }
   }).on('error', function(error) {
     self.platformLog(error);
     callback(error, null);
     });
+ 
   }
 
 
@@ -359,10 +339,12 @@
   AugustPlatform.prototype.postLogin = function(accessory, paired, callback) {
     var self = this;
     
+    
+    
     var body = {
       'value': '+' + this.phone
        };
-     
+     if (!this.code){
 
        require('request').post({
         
@@ -380,15 +362,23 @@
             self.platformLog(error);
             callback(error, null);
              });
+            } else {
+              self.getlocks(callback);
+            }
+        
+
   }
              
   AugustPlatform.prototype.sendcode = function(callback) {
+    
+    
     var self = this;
     
     var body = {
       'code': this.code,
       'value': '+' + this.phone
     };
+     
     require('request').post({
         
       url:"https://api-production.august.com/validate/phone",
@@ -405,6 +395,7 @@
             self.platformLog(error);
             callback(error, null);
      });
+    
   }
 
   AugustPlatform.prototype.getlocks = function(callback) {
@@ -423,7 +414,7 @@
               self.lock = json[self.lockids[i]];
               self.lockname = self.lock["HouseName"];
               self.platformLog("House Name " + " " + self.lockname);
-              self.getDevice(callback);
+              self.getDevice();
             }
           }
         }).on('error', function(error) {
@@ -569,9 +560,10 @@
           self.periodicUpdate();
         }
     
-       callback();
+      
       } else {
         self.platformLog("Error: Couldn't find a August lock device.");
+      
         callback("Missing August Device ID");
       }
     
@@ -600,7 +592,7 @@
     if (!error && response.statusCode == 200) {
       
      
-      thisOpener.log("State was successfully set to  " + status+ augustState);
+      thisOpener.log("State was successfully set to  " + status);
 
         // Set short polling interval
         self.count = 0;
@@ -748,6 +740,7 @@
         var newConfig = this.config;
         newConfig.phone = this.phone;
         newConfig.password = this.password;
+        newConfig.augcode = this.code;
         newConfig.securityToken = this.securityToken;
         newConfig.lockids = this.lockids;
         callback(null, "platform", true, newConfig);
